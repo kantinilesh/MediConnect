@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  # ────────────────────────────────────────────────────────────
+  # MySQL 8
+  # ────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: mediconnect-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE:-mediconnect_db}
+      MYSQL_USER:          ${MYSQL_USER:-mediconnect}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD:-mediconnect123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "--password=${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - mediconnect-net
+
+  # ────────────────────────────────────────────────────────────
+  # Spring Boot App
+  # ────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mediconnect-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL:      jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-mediconnect_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-mediconnect}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-mediconnect123}
+      MEDICONNECT_JWT_SECRET:     ${MEDICONNECT_JWT_SECRET:-changeme_use_a_long_random_secret_in_prod_min_256bits}
+      MEDICONNECT_JWT_EXPIRATION: ${MEDICONNECT_JWT_EXPIRATION:-86400000}
+    ports:
+      - "8080:8080"
+    networks:
+      - mediconnect-net
+
+volumes:
+  mysql_data:
+
+networks:
+  mediconnect-net:
+    driver: bridge

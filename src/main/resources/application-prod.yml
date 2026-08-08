@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url:      ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # NEVER auto-alter schema in prod — use Flyway/Liquibase
+    show-sql: false
+
+logging:
+  level:
+    com.mediconnect: INFO
+    root: WARN
