@@ -1,8 +1,10 @@
 package com.mediconnect.exception;
 
+import com.mediconnect.dto.common.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -10,42 +12,39 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.net.URI;
-import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Centralised exception handler — converts exceptions to RFC 7807 ProblemDetail.
- *
- * <p>All error responses share the envelope:
- * <pre>
- * {
- *   "type":     "about:blank",
- *   "title":    "Not Found",
- *   "status":   404,
- *   "detail":   "Doctor not found with id: …",
- *   "instance": "/api/v1/doctors/…",
- *   "timestamp": "2026-08-08T…Z"
- * }
- * </pre>
+ * Centralised exception handler — converts all application exceptions into structured {@link ApiResponse}.
  */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    // ── Domain exceptions ─────────────────────────────────────────────────────
-
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
-        return problem(HttpStatus.NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    @ExceptionHandler(SlotAlreadyBookedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSlotAlreadyBooked(SlotAlreadyBookedException ex) {
+        log.warn("Slot booking conflict: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidAppointmentOperationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidOperation(InvalidAppointmentOperationException ex) {
+        log.warn("Invalid operation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -54,37 +53,38 @@ public class GlobalExceptionHandler {
                         fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid",
                         (a, b) -> a));
 
-        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Validation failed");
-        pd.setProperty("errors", fieldErrors);
-        return pd;
+        log.warn("Validation failed: {}", fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Map<String, String>>builder()
+                        .success(false)
+                        .message("Validation failed")
+                        .data(fieldErrors)
+                        .build());
     }
 
-    // ── Security ──────────────────────────────────────────────────────────────
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.error("Database constraint violation", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("Slot or record constraint violation: already booked or duplicated"));
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
-        return problem(HttpStatus.FORBIDDEN, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ProblemDetail handleAuthentication(AuthenticationException ex) {
-        return problem(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage()));
     }
-
-    // ── Catch-all ─────────────────────────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneric(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
         log.error("Unhandled exception", ex);
-        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
-    }
-
-    // ── Helper ────────────────────────────────────────────────────────────────
-
-    private ProblemDetail problem(HttpStatus status, String detail) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
-        pd.setType(URI.create("about:blank"));
-        pd.setProperty("timestamp", Instant.now().toString());
-        return pd;
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("An unexpected internal error occurred"));
     }
 }

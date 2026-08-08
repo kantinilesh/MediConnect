@@ -1,0 +1,46 @@
+package com.mediconnect.controller;
+
+import com.mediconnect.dto.common.ApiResponse;
+import com.mediconnect.dto.slot.SlotGenerateRequestDto;
+import com.mediconnect.dto.slot.SlotResponseDto;
+import com.mediconnect.service.SlotService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/doctors/{doctorId}/slots")
+@RequiredArgsConstructor
+@Tag(name = "Slot Management", description = "Endpoints for slot generation and querying bookable slots")
+public class SlotController {
+
+    private final SlotService slotService;
+
+    @PostMapping("/generate")
+    @Operation(summary = "Generate bookable slots for a date range from doctor's availability templates")
+    public ResponseEntity<ApiResponse<List<SlotResponseDto>>> generateSlots(
+            @PathVariable UUID doctorId,
+            @Valid @RequestBody SlotGenerateRequestDto request) {
+        List<SlotResponseDto> slots = slotService.generateSlots(doctorId, request.getStartDate(), request.getEndDate());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(String.format("Generated %d slots", slots.size()), slots));
+    }
+
+    @GetMapping
+    @Operation(summary = "Get available slots for a doctor on a specific date")
+    public ResponseEntity<ApiResponse<List<SlotResponseDto>>> getAvailableSlots(
+            @PathVariable UUID doctorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<SlotResponseDto> slots = slotService.getAvailableSlots(doctorId, date);
+        return ResponseEntity.ok(ApiResponse.success(slots));
+    }
+}

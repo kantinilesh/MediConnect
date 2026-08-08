@@ -52,6 +52,10 @@ public class Appointment {
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "slot_id")
+    private Slot slot;
+
     @Column(name = "appointment_date", nullable = false)
     private LocalDate appointmentDate;
 

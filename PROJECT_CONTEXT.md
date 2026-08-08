@@ -9,8 +9,8 @@
 
 **MediConnect** is a stateless, RESTful healthcare appointment-booking
 microservice. It enables patients to discover doctors, view their availability,
-and book/cancel appointments. Doctors can manage their schedule. Admins have
-full oversight. A notification dispatcher handles async communication events.
+and book/cancel/reschedule appointments. Doctors can manage recurring schedule templates
+and generate bookable slots. A notification dispatcher handles async communication events.
 
 ---
 
@@ -25,11 +25,9 @@ full oversight. A notification dispatcher handles async communication events.
 | Database           | MySQL                                  | 8.0         |
 | Build Tool         | Maven                                  | 3.9+        |
 | Containerisation   | Docker + docker-compose                | —           |
+| Testing            | JUnit 5, Spring Boot Test, Testcontainers| 1.19.8    |
 | API Docs           | SpringDoc OpenAPI (Swagger UI)         | 2.6.0       |
 | Deployment Target  | AWS EC2 (later phase)                  | —           |
-
-**Why Maven over Gradle:** canonical Spring Initializr format, simpler
-multi-module layout for future phases, better CI/CD script consistency.
 
 ---
 
@@ -39,12 +37,13 @@ multi-module layout for future phases, better CI/CD script consistency.
 |---|----------|-----------|
 | A1 | Stateless JWT auth (no server-side sessions) | Horizontally scalable; fits EC2 auto-scaling |
 | A2 | Joined-table JPA inheritance for User/Doctor/Patient | Clean schema, avoids NULLs, simple cross-join queries |
-| A3 | Template-based availability (not pre-generated slots) | Reduces row explosion; slots derived at booking time |
-| A4 | Specialization as DB ENUM column | Type-safe at DB level; migration needed to add values |
-| A5 | Clinic is a column on Doctor (not its own entity) | Simplest for Phase 0; promote to entity in Phase 2 if multi-doctor clinics needed |
+| A3 | Template-based availability + concrete `Slot` generation | Doctors define recurring weekly rules (`Availability`); system generates bookable `Slot` rows for date ranges |
+| A4 | Specialization as DB ENUM column | Type-safe at DB level |
+| A5 | Clinic as columns on Doctor | Simplest model for early phases |
 | A6 | Notification.payload as JSON column | Flexible dispatcher input without schema churn |
 | A7 | JWT secret via env-var `MEDICONNECT_JWT_SECRET` | Upgrade path → AWS Secrets Manager in prod phase |
 | A8 | `ddl-auto: update` for local dev, `validate` for prod | Fast iteration locally; safety in prod |
+| A9 | **Pessimistic Write Locking (`PESSIMISTIC_WRITE`) + DB Unique Constraint (`uk_doctor_date_time`)** | Eliminates double-booking race conditions under high concurrency; serialized locking prevents retry storms; DB unique constraint provides engine-level defense-in-depth |
 
 ---
 
@@ -56,178 +55,93 @@ User (parent)
  └── Patient (JOINED inheritance — one Patient row per Patient User)
 
 Doctor  ──< Availability  (1:N)
+Doctor  ──< Slot          (1:N)
 Doctor  ──< Appointment   (1:N)
 Patient ──< Appointment   (1:N)
+Slot    ──── Appointment   (1:1)
 User    ──< Notification  (1:N)
 ```
 
 ### User
-| Field          | Type          | Notes                          |
-|----------------|---------------|--------------------------------|
-| id             | UUID (PK)     | Generated                      |
-| email          | VARCHAR unique| Indexed                        |
-| passwordHash   | VARCHAR       | BCrypt                         |
-| role           | ENUM          | PATIENT, DOCTOR, ADMIN         |
-| firstName      | VARCHAR       |                                |
-| lastName       | VARCHAR       |                                |
-| phone          | VARCHAR       |                                |
-| enabled        | BOOLEAN       | Account active flag            |
-| emailVerified  | BOOLEAN       |                                |
-| createdAt      | TIMESTAMP     | @CreatedDate                   |
-| updatedAt      | TIMESTAMP     | @LastModifiedDate              |
+- `id` (UUID PK), `email` (unique), `passwordHash`, `role` (PATIENT, DOCTOR, ADMIN), `firstName`, `lastName`, `phone`, `enabled`, `emailVerified`, `createdAt`, `updatedAt`.
 
 ### Doctor
-| Field               | Type     | Notes                          |
-|---------------------|----------|--------------------------------|
-| id                  | UUID (FK)| → User.id                      |
-| specialization      | ENUM     | CARDIOLOGY, DERMATOLOGY, …     |
-| qualifications      | TEXT     |                                |
-| clinicName          | VARCHAR  |                                |
-| clinicAddress       | VARCHAR  |                                |
-| yearsOfExperience   | INT      |                                |
-| consultationFee     | DECIMAL  |                                |
-| bio                 | TEXT     |                                |
-| rating              | DECIMAL  | Cached aggregate               |
-| Composite Index     | —        | (specialization)               |
+- `id` (UUID FK → User.id), `specialization` (ENUM), `qualifications`, `clinicName`, `clinicAddress`, `yearsOfExperience`, `consultationFee`, `bio`, `rating`.
 
 ### Patient
-| Field         | Type      | Notes              |
-|---------------|-----------|--------------------|
-| id            | UUID (FK) | → User.id          |
-| dateOfBirth   | DATE      |                    |
-| gender        | ENUM      | MALE, FEMALE, OTHER|
-| bloodGroup    | VARCHAR   |                    |
-| medicalHistory| TEXT      |                    |
+- `id` (UUID FK → User.id), `dateOfBirth`, `gender`, `bloodGroup`, `medicalHistory`.
 
 ### Availability
-| Field               | Type      | Notes                               |
-|---------------------|-----------|-------------------------------------|
-| id                  | UUID (PK) |                                     |
-| doctorId            | UUID (FK) | → Doctor.id                         |
-| dayOfWeek           | ENUM      | MONDAY … SUNDAY                     |
-| startTime           | TIME      |                                     |
-| endTime             | TIME      |                                     |
-| slotDurationMinutes | INT       | e.g. 30                             |
-| isActive            | BOOLEAN   |                                     |
-| Composite Index     | —         | (doctorId, dayOfWeek)               |
+- `id` (UUID PK), `doctorId` (FK), `dayOfWeek` (MONDAY..SUNDAY), `startTime`, `endTime`, `slotDurationMinutes`, `isActive`.
+- Composite Index: `(doctorId, dayOfWeek)`
+
+### Slot
+- `id` (UUID PK), `doctorId` (FK), `slotDate` (DATE), `startTime` (TIME), `endTime` (TIME), `status` (AVAILABLE, BOOKED, BLOCKED), `version`.
+- **Unique Constraint**: `uk_doctor_date_time` on `(doctor_id, slot_date, start_time)`.
+- Index: `(doctor_id, slot_date, status)`.
 
 ### Appointment
-| Field               | Type      | Notes                                   |
-|---------------------|-----------|-----------------------------------------|
-| id                  | UUID (PK) |                                         |
-| patientId           | UUID (FK) | → Patient.id                            |
-| doctorId            | UUID (FK) | → Doctor.id                             |
-| appointmentDate     | DATE      |                                         |
-| startTime           | TIME      |                                         |
-| endTime             | TIME      |                                         |
-| status              | ENUM      | PENDING, CONFIRMED, CANCELLED, COMPLETED|
-| reason              | TEXT      | Chief complaint                         |
-| notes               | TEXT      | Doctor's post-consult notes             |
-| cancellationReason  | TEXT      |                                         |
-| createdAt           | TIMESTAMP |                                         |
-| updatedAt           | TIMESTAMP |                                         |
-| Composite Index 1   | —         | (doctorId, appointmentDate, status)     |
-| Composite Index 2   | —         | (patientId, status)                     |
-
-### Notification
-| Field       | Type      | Notes                                             |
-|-------------|-----------|---------------------------------------------------|
-| id          | UUID (PK) |                                                   |
-| userId      | UUID (FK) | → User.id                                         |
-| type        | ENUM      | EMAIL, SMS, PUSH                                  |
-| event       | ENUM      | APPOINTMENT_BOOKED, CANCELLED, REMINDER, …        |
-| payload     | JSON      | Flexible dispatcher input                         |
-| status      | ENUM      | PENDING, SENT, FAILED                             |
-| scheduledAt | TIMESTAMP |                                                   |
-| sentAt      | TIMESTAMP | Nullable                                          |
-| createdAt   | TIMESTAMP |                                                   |
-| Index 1     | —         | (userId, status)                                  |
-| Index 2     | —         | (scheduledAt, status) — dispatcher polling        |
+- `id` (UUID PK), `patientId` (FK), `doctorId` (FK), `slotId` (FK), `appointmentDate` (DATE), `startTime` (TIME), `endTime` (TIME), `status` (PENDING, CONFIRMED, CANCELLED, COMPLETED), `reason`, `notes`, `cancellationReason`, `createdAt`, `updatedAt`.
+- Composite Index 1: `(doctorId, appointmentDate, status)`
+- Composite Index 2: `(patientId, status)`
 
 ---
 
-## 5. Package Structure
+## 5. API Contracts
 
-```
-com.mediconnect
- ├── MediConnectApplication.java
- ├── config/          SecurityConfig, JwtConfig, CorsConfig, SwaggerConfig
- ├── controller/      AuthController, DoctorController, AppointmentController, …
- ├── service/         interfaces + Impl classes
- ├── repository/      Spring Data JPA repos
- ├── entity/          JPA entities
- ├── dto/             Request / Response DTOs
- ├── security/        JwtTokenProvider, JwtAuthenticationFilter, UserDetailsServiceImpl
- ├── exception/       GlobalExceptionHandler, custom exception classes
- └── dispatcher/      NotificationDispatcher (stub → async impl in Phase 3)
+### Response Envelope (`ApiResponse<T>`)
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {},
+  "timestamp": "2026-08-09T02:15:00Z"
+}
 ```
 
----
+### Endpoints Implemented
 
-## 6. API Conventions
+#### Doctor Discovery
+- `GET /api/v1/doctors/search?specialization=CARDIOLOGY&name=Smith&location=City&availableDate=2026-08-10&minRating=4.0&page=0&size=10`
+  - Returns paginated list of doctors matching criteria.
+- `GET /api/v1/doctors/{id}`
+  - Returns doctor profile details.
 
-- **Base path:** `/api/v1`
-- **Auth header:** `Authorization: Bearer <jwt>`
-- **Response envelope:**
-  ```json
-  { "success": true, "data": {}, "message": "OK", "timestamp": "…" }
-  ```
-- **Error envelope:**
-  ```json
-  { "success": false, "error": "NOT_FOUND", "message": "Doctor not found", "timestamp": "…" }
-  ```
-- **Pagination:** `?page=0&size=20&sort=createdAt,desc`
-- **Date format:** ISO-8601 (`yyyy-MM-dd`, `HH:mm`)
+#### Availability & Slot Management
+- `POST /api/v1/doctors/{doctorId}/availabilities`
+  - Body: `{ "dayOfWeek": "MONDAY", "startTime": "09:00", "endTime": "17:00", "slotDurationMinutes": 30 }`
+- `GET /api/v1/doctors/{doctorId}/availabilities`
+  - Lists doctor availability templates.
+- `POST /api/v1/doctors/{doctorId}/slots/generate`
+  - Body: `{ "startDate": "2026-08-10", "endDate": "2026-08-15" }`
+  - Generates bookable slots for the date range.
+- `GET /api/v1/doctors/{doctorId}/slots?date=2026-08-10`
+  - Returns AVAILABLE slots for doctor on specified date.
 
----
-
-## 7. Configuration Profiles
-
-| Profile | Active when              | DB host            | DDL auto  |
-|---------|--------------------------|--------------------|-----------|
-| local   | `docker compose up`      | `mysql` (compose)  | update    |
-| prod    | EC2 deployment           | RDS / EC2 MySQL    | validate  |
-
----
-
-## 8. Folder / File Map
-
-```
-mediconnect/
-├── src/main/java/com/mediconnect/…  (see §5)
-├── src/main/resources/
-│   ├── application.yml
-│   ├── application-local.yml
-│   └── application-prod.yml
-├── src/test/java/com/mediconnect/…
-├── docker-compose.yml
-├── Dockerfile
-├── pom.xml
-└── PROJECT_CONTEXT.md   ← this file
-```
+#### Appointment Booking
+- `POST /api/v1/appointments`
+  - Body: `{ "patientId": "...", "slotId": "...", "reason": "Routine checkup" }`
+  - Acquires `PESSIMISTIC_WRITE` lock on slot; sets slot to `BOOKED` & creates appointment.
+- `PUT /api/v1/appointments/{id}/cancel`
+  - Body: `{ "cancellationReason": "Feeling unwell" }`
+  - Cancels appointment & frees slot back to `AVAILABLE`.
+- `PUT /api/v1/appointments/{id}/reschedule`
+  - Body: `{ "newSlotId": "..." }`
+  - Atomically locks new slot, frees old slot, & updates appointment.
+- `GET /api/v1/appointments/{id}`
+- `GET /api/v1/appointments/patient/{patientId}?page=0&size=10`
+- `GET /api/v1/appointments/doctor/{doctorId}?date=2026-08-10&page=0&size=10`
 
 ---
 
-## 9. Decisions Log
+## 6. Decisions Log
 
 | Date       | Phase | Decision                                              |
 |------------|-------|-------------------------------------------------------|
 | 2026-08-08 | 0     | Project initialised; Maven chosen over Gradle         |
-| 2026-08-08 | 0     | Joined-table inheritance approved for User hierarchy  |
-| 2026-08-08 | 0     | Template-based availability (not pre-generated slots) |
+| 2026-08-08 | 0     | Joined-table inheritance for User hierarchy           |
 | 2026-08-08 | 0     | Specialization as ENUM column on Doctor               |
-| 2026-08-08 | 0     | Clinic kept as columns on Doctor (revisit Phase 2)    |
-| 2026-08-08 | 0     | JWT secret via env-var; upgrade to AWS SM in prod     |
-
----
-
-## 10. Future Phases (Planned)
-
-| Phase | Theme                                                   |
-|-------|---------------------------------------------------------|
-| 1     | Auth endpoints (register/login/refresh), RBAC           |
-| 2     | Doctor discovery, availability CRUD, slot generation    |
-| 3     | Appointment booking, conflict detection                 |
-| 4     | Notification dispatcher (async / email / SMS)           |
-| 5     | EC2 deployment, RDS, nginx reverse proxy                |
-| 6     | Rating system, admin dashboard APIs                     |
+| 2026-08-08 | 0     | JWT secret via env-var                                |
+| 2026-08-09 | 1     | Concrete `Slot` entity created from `Availability` templates |
+| 2026-08-09 | 1     | **Pessimistic Write Locking (`PESSIMISTIC_WRITE`) + `uk_doctor_date_time` DB Unique Constraint** adopted for atomic double-booking prevention |
+| 2026-08-09 | 1     | Integrated Testcontainers MySQL 8 concurrency test proving 100% race condition protection under 10 parallel threads |

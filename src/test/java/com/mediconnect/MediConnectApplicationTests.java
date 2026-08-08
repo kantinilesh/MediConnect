@@ -11,7 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
  * with an embedded datasource (H2) — to be added in Phase 1.
  */
 @SpringBootTest
-@ActiveProfiles("local")
+@ActiveProfiles("test")
 class MediConnectApplicationTests {
 
     @Test
