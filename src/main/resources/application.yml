@@ -21,15 +21,20 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
 
-# Actuator
+# Actuator — expose metrics for Micrometer scraping
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
+    metrics:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 # SpringDoc / Swagger
 springdoc:
@@ -38,10 +43,42 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# Application-level JWT settings (overridable per profile)
+# Application-level config
 mediconnect:
   jwt:
     secret:     ${MEDICONNECT_JWT_SECRET:changeme_use_a_long_random_secret_in_prod_min_256bits}
     expiration:         ${MEDICONNECT_JWT_EXPIRATION:86400000}          # 24 h in ms
     refresh-expiration: ${MEDICONNECT_JWT_REFRESH_EXPIRATION:604800000}  # 7 days in ms
+
+  notification:
+    # ── BlockingQueue ──────────────────────────────────────────────────────────
+    # LinkedBlockingQueue capacity: 1000 slots.
+    # At 500 events/min (≈8.3/sec) with 8 threads processing ~120ms avg,
+    # the drain rate is ~66/sec — this buffer absorbs ~15 seconds of burst.
+    queue-capacity: 1000
+
+    # ── Thread pool ────────────────────────────────────────────────────────────
+    # 8 threads (= 2×CPU for I/O-bound notification sends).
+    thread-pool-size: 8
+
+    # ── Backpressure ───────────────────────────────────────────────────────────
+    # offer(task, timeout) before dropping. 200ms gives the queue a brief
+    # grace period without blocking the HTTP thread for more than 200ms.
+    offer-timeout-ms: 200
+
+    # ── Graceful shutdown ──────────────────────────────────────────────────────
+    shutdown-timeout-seconds: 30
+
+    mock-client:
+      # Fraction of sends that simulate a provider failure (0.0–1.0)
+      failure-rate: ${MEDICONNECT_NOTIF_FAILURE_RATE:0.2}
+      # Simulated network latency range (ms) — set to 0/1 in tests
+      min-latency-ms: 5
+      max-latency-ms: 15
+
+    retry:
+      max-attempts: 3
+      base-delay-ms: 200
+      # ±jitter fraction of base delay to prevent thundering herd
+      jitter-factor: 0.2
 

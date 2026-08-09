@@ -18,3 +18,22 @@ mediconnect:
     secret: bWVkaWNvbm5lY3QtdGVzdC1qd3Qtc2VjcmV0LWtleS1mb3ItdW5pdC10ZXN0cy1taW4zMmNoYXJz
     expiration: 3600000          # 1 hour for tests
     refresh-expiration: 86400000  # 24 hours for tests
+
+  notification:
+    queue-capacity: 2000      # extra headroom for burst load test
+    thread-pool-size: 8
+    offer-timeout-ms: 500     # longer timeout for test reliability
+    shutdown-timeout-seconds: 60
+
+    mock-client:
+      # 10% failure to exercise retry paths without slowing down the test much
+      failure-rate: 0.10
+      # Near-zero latency so the throughput test is not artificially bottlenecked
+      min-latency-ms: 0
+      max-latency-ms: 1
+
+    retry:
+      max-attempts: 3
+      base-delay-ms: 10     # tiny backoff in tests (not 200ms)
+      jitter-factor: 0.1
+
