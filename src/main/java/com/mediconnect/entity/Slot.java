@@ -2,7 +2,6 @@ package com.mediconnect.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -16,6 +15,9 @@ import java.util.UUID;
  *
  * <p>Unique constraint {@code uk_doctor_date_time} on {@code (doctor_id, slot_date, start_time)}
  * provides database-level defense-in-depth against double-creation/booking.
+ *
+ * <p>Note: explicit getters are provided in addition to Lombok's {@code @Getter}
+ * to ensure they are visible to the Java compiler regardless of annotation-processor order.
  */
 @Entity
 @Table(
@@ -34,7 +36,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
+@Builder
 public class Slot {
 
     @Id
@@ -62,6 +64,16 @@ public class Slot {
 
     @Version
     private Long version;
+
+    // ── Explicit accessors (complement Lombok @Getter for compiler reliability) ─
+
+    public UUID getId()            { return id; }
+    public Doctor getDoctor()      { return doctor; }
+    public LocalDate getSlotDate() { return slotDate; }
+    public LocalTime getStartTime(){ return startTime; }
+    public LocalTime getEndTime()  { return endTime; }
+    public Status getStatus()      { return status; }
+    public Long getVersion()       { return version; }
 
     // ── Enums ─────────────────────────────────────────────────────────────────
 

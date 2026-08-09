@@ -42,4 +42,6 @@ springdoc:
 mediconnect:
   jwt:
     secret:     ${MEDICONNECT_JWT_SECRET:changeme_use_a_long_random_secret_in_prod_min_256bits}
-    expiration: ${MEDICONNECT_JWT_EXPIRATION:86400000}   # 24 h in ms
+    expiration:         ${MEDICONNECT_JWT_EXPIRATION:86400000}          # 24 h in ms
+    refresh-expiration: ${MEDICONNECT_JWT_REFRESH_EXPIRATION:604800000}  # 7 days in ms
+

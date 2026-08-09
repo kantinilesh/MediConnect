@@ -75,4 +75,17 @@ public class User {
     public enum Role {
         PATIENT, DOCTOR, ADMIN
     }
+
+    // ── Explicit accessors (complement Lombok @Getter for compiler reliability) ─
+
+    public UUID    getId()            { return id; }
+    public String  getEmail()         { return email; }
+    public String  getPasswordHash()  { return passwordHash; }
+    public Role    getRole()          { return role; }
+    public String  getFirstName()     { return firstName; }
+    public String  getLastName()      { return lastName; }
+    public String  getPhone()         { return phone; }
+    public Boolean getEnabled()       { return enabled; }
+    public Boolean getEmailVerified() { return emailVerified; }
 }
+

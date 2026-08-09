@@ -145,3 +145,60 @@ User    ──< Notification  (1:N)
 | 2026-08-09 | 1     | Concrete `Slot` entity created from `Availability` templates |
 | 2026-08-09 | 1     | **Pessimistic Write Locking (`PESSIMISTIC_WRITE`) + `uk_doctor_date_time` DB Unique Constraint** adopted for atomic double-booking prevention |
 | 2026-08-09 | 1     | Integrated Testcontainers MySQL 8 concurrency test proving 100% race condition protection under 10 parallel threads |
+| 2026-08-09 | 2     | DB-backed refresh tokens (`RefreshToken` table) with explicit delete-on-rotation (not just revoke) to avoid `@OneToOne` unique constraint violation |
+| 2026-08-09 | 2     | JWT `token_type` claim (`ACCESS`/`REFRESH`) added to prevent refresh tokens being used as access tokens |
+| 2026-08-09 | 2     | `signingKey()` catches `RuntimeException` (not just `IllegalArgumentException`) to handle JJWT's `DecodingException` for non-base64 secrets |
+| 2026-08-09 | 2     | Java 26 (Homebrew default) breaks Lombok annotation processing; project must be built with Java 17 (`JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`) |
+| 2026-08-09 | 2     | `Slot` entity explicit getters added alongside `@Getter` as a Lombok apt-ordering workaround on Java 17 + Maven 3.9 |
+
+---
+
+## 7. Auth & Security — Phase 2
+
+### Authentication Flow
+
+```
+Client → POST /api/v1/auth/register/patient  →  201 { accessToken, refreshToken, userId, role }
+Client → POST /api/v1/auth/register/doctor   →  201 { accessToken, refreshToken, userId, role }
+Client → POST /api/v1/auth/login             →  200 { accessToken, refreshToken, userId, role }
+Client → POST /api/v1/auth/refresh           →  200 { accessToken (new), refreshToken (rotated) }
+```
+
+- **Passwords**: BCrypt (strength 12)
+- **Access token**: short-lived JWT (default 24 h, `MEDICONNECT_JWT_EXPIRATION`)
+- **Refresh token**: opaque random string stored in `refresh_tokens` table (default 7 days, `MEDICONNECT_JWT_REFRESH_EXPIRATION`). One active token per user — rotation deletes old token before inserting new one.
+- **JWT claims**: `sub` (email), `roles` (comma-separated), `token_type` (`ACCESS`)
+
+### Role-Based Access Control (RBAC)
+
+| Endpoint | Method | Required Role(s) |
+|----------|--------|-----------------|
+| `/api/v1/auth/**` | ANY | **Public** — no JWT required |
+| `/api/v1/doctors/search` | GET | **Public** — no JWT required |
+| `/api/v1/doctors/{id}` | GET | **Public** — no JWT required |
+| `/api/v1/appointments` | POST (book) | `ROLE_PATIENT` |
+| `/api/v1/appointments/{id}/cancel` | PUT | `ROLE_PATIENT`, `ROLE_ADMIN` |
+| `/api/v1/appointments/{id}/reschedule` | PUT | `ROLE_PATIENT`, `ROLE_ADMIN` |
+| `/api/v1/appointments/{id}` | GET | Any authenticated |
+| `/api/v1/appointments/patient/{id}` | GET | `ROLE_PATIENT`, `ROLE_ADMIN` |
+| `/api/v1/appointments/doctor/{id}` | GET | `ROLE_DOCTOR`, `ROLE_ADMIN` |
+| `/api/v1/doctors/{id}/availabilities` | POST | `ROLE_DOCTOR` |
+| `/api/v1/doctors/{id}/availabilities` | GET | `ROLE_DOCTOR`, `ROLE_ADMIN` |
+| `/api/v1/doctors/{id}/slots/generate` | POST | `ROLE_DOCTOR` |
+| `/api/v1/doctors/{id}/slots` | GET | Any authenticated |
+
+### Error Responses
+
+| HTTP | When |
+|------|------|
+| 401  | No JWT, expired JWT, malformed JWT, or wrong `token_type` |
+| 403  | Valid JWT but insufficient role for the endpoint |
+| 400  | Validation failure (missing fields, expired refresh token, duplicate email) |
+
+### Build Note
+
+> **Always build with Java 17**, not the Homebrew default Java 26:
+> ```bash
+> JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn clean test
+> ```
+
