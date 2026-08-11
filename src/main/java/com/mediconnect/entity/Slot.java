@@ -27,9 +27,6 @@ import java.util.UUID;
             name = "uk_doctor_date_time",
             columnNames = {"doctor_id", "slot_date", "start_time"}
         )
-    },
-    indexes = {
-        @Index(name = "idx_slot_doctor_date_status", columnList = "doctor_id, slot_date, status")
     }
 )
 @Getter

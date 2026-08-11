@@ -16,12 +16,7 @@ import java.util.List;
  * doctors share the same clinic (Phase 2 decision — see PROJECT_CONTEXT.md A5).
  */
 @Entity
-@Table(
-    name = "doctors",
-    indexes = {
-        @Index(name = "idx_doctor_specialization", columnList = "specialization")
-    }
-)
+@Table(name = "doctors")
 @PrimaryKeyJoinColumn(name = "user_id")
 @Getter
 @Setter

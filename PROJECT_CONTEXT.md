@@ -202,3 +202,13 @@ Client → POST /api/v1/auth/refresh           →  200 { accessToken (new), ref
 > JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home mvn clean test
 > ```
 
+
+## Phase 4: Database Profiling & Index Optimization (Completed)
+- **Data Seeding**: Implemented high-speed JDBC `DatabaseSeeder` to inject realistic volume (500 doctors, 50k patients, 200k slots/appointments).
+- **Migration Engine**: Integrated Flyway (`spring.flyway.enabled`). Extracted a clean unindexed `V1__baseline.sql` and mapped `ddl-auto: validate`.
+- **Benchmarking**: Implemented `BenchmarkRunner` to run `EXPLAIN` and nano-time measurements on hot queries (Admin Dashboard, Doctor Schedule, Doctor Search).
+- **Composite Indexes (`V2__add_composite_indexes.sql`)**: 
+  - `(status, appointment_date)`: optimized range scans for Admin counts.
+  - `(doctor_id, status, appointment_date DESC, start_time DESC)`: completely eliminated `Using filesort` for doctor's daily view.
+  - `(specialization)`: improved selectivity before wildcard filters on doctors.
+- **Results**: Verified that queries shifted from full table scans (`type: ALL`, `Using filesort`) to index range/ref scans (`type: range`, `Using index condition`), matching the intent of the resume bullet.

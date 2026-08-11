@@ -22,15 +22,7 @@ import java.util.UUID;
  * </ul>
  */
 @Entity
-@Table(
-    name = "appointments",
-    indexes = {
-        @Index(name = "idx_appt_doctor_date_status",
-               columnList = "doctor_id, appointment_date, status"),
-        @Index(name = "idx_appt_patient_status",
-               columnList = "patient_id, status")
-    }
-)
+@Table(name = "appointments")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
