@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────
 # Stage 1 — Build
 # ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
 WORKDIR /workspace
 
@@ -18,13 +18,13 @@ RUN --mount=type=cache,target=/root/.m2 \
 # ─────────────────────────────────────────────────────────────
 # Stage 2 — Runtime
 # ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM eclipse-temurin:17-jre-jammy AS runtime
 
 LABEL maintainer="kantinilesh2312@gmail.com"
 LABEL project="mediconnect"
 
 # Non-root user for security
-RUN addgroup -S mediconnect && adduser -S mediconnect -G mediconnect
+RUN groupadd -r mediconnect && useradd -r -g mediconnect mediconnect
 
 WORKDIR /app
 
