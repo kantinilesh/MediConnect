@@ -3,6 +3,7 @@ package com.mediconnect.seeder;
 import com.mediconnect.dto.auth.RegisterDoctorRequestDto;
 import com.mediconnect.dto.auth.RegisterPatientRequestDto;
 import com.mediconnect.dto.slot.SlotGenerateRequestDto;
+import com.mediconnect.entity.Doctor;
 import com.mediconnect.repository.UserRepository;
 import com.mediconnect.service.AuthService;
 import com.mediconnect.service.SlotService;
@@ -38,7 +39,7 @@ public class DemoSeeder implements CommandLineRunner {
         patient1.setPassword("password123");
         patient1.setFirstName("John");
         patient1.setLastName("Doe");
-        patient1.setPhoneNumber("+1234567890");
+        patient1.setPhone("+1234567890");
         authService.registerPatient(patient1);
 
         RegisterPatientRequestDto patient2 = new RegisterPatientRequestDto();
@@ -46,7 +47,7 @@ public class DemoSeeder implements CommandLineRunner {
         patient2.setPassword("password123");
         patient2.setFirstName("Jane");
         patient2.setLastName("Smith");
-        patient2.setPhoneNumber("+1987654321");
+        patient2.setPhone("+1987654321");
         authService.registerPatient(patient2);
 
         // 2. Create Doctors
@@ -64,11 +65,11 @@ public class DemoSeeder implements CommandLineRunner {
             doctor.setPassword("password123");
             doctor.setFirstName(doctorData[i][0]);
             doctor.setLastName(doctorData[i][1]);
-            doctor.setSpecialization(doctorData[i][2]);
+            doctor.setSpecialization(Doctor.Specialization.valueOf(doctorData[i][2].toUpperCase()));
             doctor.setBio(doctorData[i][3]);
 
             var response = authService.registerDoctor(doctor);
-            UUID doctorId = response.getUser().getId();
+            UUID doctorId = response.getUserId();
 
             // 3. Generate Slots for each doctor for the next 7 days
             try {
