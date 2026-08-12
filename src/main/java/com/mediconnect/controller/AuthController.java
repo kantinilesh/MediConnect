@@ -4,6 +4,9 @@ import com.mediconnect.dto.auth.*;
 import com.mediconnect.dto.common.ApiResponse;
 import com.mediconnect.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,10 @@ public class AuthController {
 
     @PostMapping("/register/patient")
     @Operation(summary = "Register a new patient account")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Patient registered successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request payload or email already exists", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
     public ResponseEntity<ApiResponse<AuthResponseDto>> registerPatient(
             @Valid @RequestBody RegisterPatientRequestDto request) {
         AuthResponseDto response = authService.registerPatient(request);
@@ -40,6 +47,10 @@ public class AuthController {
 
     @PostMapping("/register/doctor")
     @Operation(summary = "Register a new doctor account")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Doctor registered successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request payload or email already exists", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
     public ResponseEntity<ApiResponse<AuthResponseDto>> registerDoctor(
             @Valid @RequestBody RegisterDoctorRequestDto request) {
         AuthResponseDto response = authService.registerDoctor(request);
@@ -49,6 +60,10 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Login with email and password — returns access + refresh tokens")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Bad credentials", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
     public ResponseEntity<ApiResponse<AuthResponseDto>> login(
             @Valid @RequestBody LoginRequestDto request) {
         AuthResponseDto response = authService.login(request);

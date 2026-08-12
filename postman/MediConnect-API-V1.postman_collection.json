@@ -1,0 +1,130 @@
+{
+    "info": {
+        "name": "MediConnect API V1",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Register Patient",
+            "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "url": {"raw": "{{base_url}}/api/v1/auth/register/patient", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register", "patient"]},
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"new_patient@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Demo\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+                }
+            }
+        },
+        {
+            "name": "2. Login Patient",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "var jsonData = pm.response.json();",
+                            "if (jsonData.data && jsonData.data.accessToken) {",
+                            "    pm.environment.set(\"auth_token\", jsonData.data.accessToken);",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "url": {"raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"]},
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"email\": \"new_patient@example.com\",\n  \"password\": \"password123\"\n}"
+                }
+            }
+        },
+        {
+            "name": "3. Search Doctors",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/doctors/search?specialization=Cardiology",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "doctors", "search"],
+                    "query": [{"key": "specialization", "value": "Cardiology"}]
+                }
+            }
+        },
+        {
+            "name": "4. View Doctor Slots",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "var jsonData = pm.response.json();",
+                            "if (jsonData.data && jsonData.data.length > 0) {",
+                            "    pm.environment.set(\"slot_id\", jsonData.data[0].id);",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "GET",
+                "header": [{"key": "Authorization", "value": "Bearer {{auth_token}}"}],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/doctors/{{doctor_id}}/slots?date={{today_date}}",
+                    "host": ["{{base_url}}"],
+                    "path": ["api", "v1", "doctors", "{{doctor_id}}", "slots"],
+                    "query": [{"key": "date", "value": "{{today_date}}"}]
+                }
+            }
+        },
+        {
+            "name": "5. Book Appointment",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "var jsonData = pm.response.json();",
+                            "if (jsonData.data && jsonData.data.id) {",
+                            "    pm.environment.set(\"appointment_id\", jsonData.data.id);",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {"key": "Authorization", "value": "Bearer {{auth_token}}"},
+                    {"key": "Content-Type", "value": "application/json"}
+                ],
+                "url": {"raw": "{{base_url}}/api/v1/appointments", "host": ["{{base_url}}"], "path": ["api", "v1", "appointments"]},
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"slotId\": \"{{slot_id}}\",\n  \"reasonForVisit\": \"Routine checkup\"\n}"
+                }
+            }
+        },
+        {
+            "name": "6. Cancel Appointment",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {"key": "Authorization", "value": "Bearer {{auth_token}}"},
+                    {"key": "Content-Type", "value": "application/json"}
+                ],
+                "url": {"raw": "{{base_url}}/api/v1/appointments/{{appointment_id}}/cancel", "host": ["{{base_url}}"], "path": ["api", "v1", "appointments", "{{appointment_id}}", "cancel"]},
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"reason\": \"No longer needed\"\n}"
+                }
+            }
+        }
+    ]
+}

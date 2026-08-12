@@ -5,6 +5,9 @@ import com.mediconnect.dto.slot.SlotGenerateRequestDto;
 import com.mediconnect.dto.slot.SlotResponseDto;
 import com.mediconnect.service.SlotService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,6 +44,11 @@ public class SlotController {
     @PostMapping("/generate")
     @PreAuthorize("hasRole('DOCTOR')")
     @Operation(summary = "Generate bookable slots for a date range from doctor's availability templates — DOCTOR only")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Slots successfully generated"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid date range", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "User does not have DOCTOR role or is generating for another doctor", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
     public ResponseEntity<ApiResponse<List<SlotResponseDto>>> generateSlots(
             @PathVariable UUID doctorId,
             @Valid @RequestBody SlotGenerateRequestDto request) {

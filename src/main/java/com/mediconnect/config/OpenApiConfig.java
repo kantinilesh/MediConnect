@@ -22,7 +22,8 @@ import org.springframework.context.annotation.Configuration;
         version     = "v1",
         description = "Doctor-discovery and appointment-booking microservice",
         contact     = @Contact(name = "MediConnect Team")
-    )
+    ),
+    security = @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
 )
 @SecurityScheme(
     name   = "bearerAuth",

@@ -7,6 +7,9 @@ import com.mediconnect.dto.appointment.RescheduleAppointmentRequestDto;
 import com.mediconnect.dto.common.ApiResponse;
 import com.mediconnect.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,7 +50,14 @@ public class AppointmentController {
     @PostMapping
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Book an available slot atomically (Pessimistic Locking) — PATIENT only")
-    public ResponseEntity<ApiResponse<AppointmentResponseDto>> bookAppointment(
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Appointment successfully booked"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request payload", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "User does not have PATIENT role", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Slot not found", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Slot is already booked (Concurrent booking attempt)", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
+    public ResponseEntity<com.mediconnect.dto.common.ApiResponse<AppointmentResponseDto>> bookAppointment(
             @Valid @RequestBody BookAppointmentRequestDto request) {
         AppointmentResponseDto appointment = appointmentService.bookAppointment(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -58,7 +68,11 @@ public class AppointmentController {
     @PutMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('PATIENT', 'ADMIN')")
     @Operation(summary = "Cancel an appointment and free the slot — PATIENT (own) or ADMIN")
-    public ResponseEntity<ApiResponse<AppointmentResponseDto>> cancelAppointment(
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Appointment successfully cancelled"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Appointment not found", content = @Content(schema = @Schema(implementation = com.mediconnect.dto.common.ApiResponse.class)))
+    })
+    public ResponseEntity<com.mediconnect.dto.common.ApiResponse<AppointmentResponseDto>> cancelAppointment(
             @PathVariable UUID id,
             @RequestBody(required = false) CancelAppointmentRequestDto request) {
         AppointmentResponseDto appointment = appointmentService.cancelAppointment(id, request);
