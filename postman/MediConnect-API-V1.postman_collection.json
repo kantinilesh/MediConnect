@@ -8,8 +8,25 @@
             "name": "1. Register Patient",
             "request": {
                 "method": "POST",
-                "header": [{"key": "Content-Type", "value": "application/json"}],
-                "url": {"raw": "{{base_url}}/api/v1/auth/register/patient", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register", "patient"]},
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/auth/register/patient",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "auth",
+                        "register",
+                        "patient"
+                    ]
+                },
                 "body": {
                     "mode": "raw",
                     "raw": "{\n  \"email\": \"new_patient@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Demo\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\"\n}"
@@ -37,8 +54,24 @@
             ],
             "request": {
                 "method": "POST",
-                "header": [{"key": "Content-Type", "value": "application/json"}],
-                "url": {"raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"]},
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/v1/auth/login",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "auth",
+                        "login"
+                    ]
+                },
                 "body": {
                     "mode": "raw",
                     "raw": "{\n  \"email\": \"new_patient@example.com\",\n  \"password\": \"password123\"\n}"
@@ -65,13 +98,41 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/api/v1/doctors/search?specialization=CARDIOLOGY&page=0&size=10",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "v1", "doctors", "search"],
+                    "raw": "{{base_url}}/api/v1/doctors/search?specialization=CARDIOLOGY&page=0&size=10&minRating=0&sortBy=rating&sortDirection=desc",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "doctors",
+                        "search"
+                    ],
                     "query": [
-                        {"key": "specialization", "value": "CARDIOLOGY"},
-                        {"key": "page", "value": "0"},
-                        {"key": "size", "value": "10"}
+                        {
+                            "key": "specialization",
+                            "value": "CARDIOLOGY"
+                        },
+                        {
+                            "key": "page",
+                            "value": "0"
+                        },
+                        {
+                            "key": "size",
+                            "value": "10"
+                        },
+                        {
+                            "key": "minRating",
+                            "value": "0"
+                        },
+                        {
+                            "key": "sortBy",
+                            "value": "rating"
+                        },
+                        {
+                            "key": "sortDirection",
+                            "value": "desc"
+                        }
                     ]
                 }
             }
@@ -94,12 +155,30 @@
             ],
             "request": {
                 "method": "GET",
-                "header": [{"key": "Authorization", "value": "Bearer {{auth_token}}"}],
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    }
+                ],
                 "url": {
                     "raw": "{{base_url}}/api/v1/doctors/{{doctor_id}}/slots?date={{today_date}}",
-                    "host": ["{{base_url}}"],
-                    "path": ["api", "v1", "doctors", "{{doctor_id}}", "slots"],
-                    "query": [{"key": "date", "value": "{{today_date}}"}]
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "doctors",
+                        "{{doctor_id}}",
+                        "slots"
+                    ],
+                    "query": [
+                        {
+                            "key": "date",
+                            "value": "{{today_date}}"
+                        }
+                    ]
                 }
             }
         },
@@ -122,10 +201,26 @@
             "request": {
                 "method": "POST",
                 "header": [
-                    {"key": "Authorization", "value": "Bearer {{auth_token}}"},
-                    {"key": "Content-Type", "value": "application/json"}
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
                 ],
-                "url": {"raw": "{{base_url}}/api/v1/appointments", "host": ["{{base_url}}"], "path": ["api", "v1", "appointments"]},
+                "url": {
+                    "raw": "{{base_url}}/api/v1/appointments",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "appointments"
+                    ]
+                },
                 "body": {
                     "mode": "raw",
                     "raw": "{\n  \"patientId\": \"{{patient_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"reason\": \"Routine checkup\"\n}"
@@ -137,10 +232,28 @@
             "request": {
                 "method": "PUT",
                 "header": [
-                    {"key": "Authorization", "value": "Bearer {{auth_token}}"},
-                    {"key": "Content-Type", "value": "application/json"}
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{auth_token}}"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
                 ],
-                "url": {"raw": "{{base_url}}/api/v1/appointments/{{appointment_id}}/cancel", "host": ["{{base_url}}"], "path": ["api", "v1", "appointments", "{{appointment_id}}", "cancel"]},
+                "url": {
+                    "raw": "{{base_url}}/api/v1/appointments/{{appointment_id}}/cancel",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "v1",
+                        "appointments",
+                        "{{appointment_id}}",
+                        "cancel"
+                    ]
+                },
                 "body": {
                     "mode": "raw",
                     "raw": "{\n  \"reason\": \"No longer needed\"\n}"
