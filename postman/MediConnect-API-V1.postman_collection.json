@@ -47,6 +47,20 @@
         },
         {
             "name": "3. Search Doctors",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "var jsonData = pm.response.json();",
+                            "if (jsonData.data && jsonData.data.content && jsonData.data.content.length > 0) {",
+                            "    pm.environment.set(\"doctor_id\", jsonData.data.content[0].id);",
+                            "}"
+                        ],
+                        "type": "text/javascript"
+                    }
+                }
+            ],
             "request": {
                 "method": "GET",
                 "header": [],
