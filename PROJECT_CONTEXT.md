@@ -212,3 +212,9 @@ Client → POST /api/v1/auth/refresh           →  200 { accessToken (new), ref
   - `(doctor_id, status, appointment_date DESC, start_time DESC)`: completely eliminated `Using filesort` for doctor's daily view.
   - `(specialization)`: improved selectivity before wildcard filters on doctors.
 - **Results**: Verified that queries shifted from full table scans (`type: ALL`, `Using filesort`) to index range/ref scans (`type: range`, `Using index condition`), matching the intent of the resume bullet.
+
+## Phase 5: Docker Hardening & Deployment Prep (Completed)
+- **Dockerfile**: Implemented multi-stage builds (Eclipse Temurin Alpine), created non-root user `mediconnect` for security, and added JVM memory boundaries (`-Xms256m -Xmx512m`) for EC2 micro/small instances.
+- **Docker Compose**: Added `adminer` for local DB introspection, stripped hardcoded defaults to force strict environment-based configs, and set explicit startup dependencies via `healthcheck`.
+- **Environment**: Refined `.env.example` as the canonical template.
+- **Documentation**: Generated `README.md` containing strict build & run commands for clean clones.
