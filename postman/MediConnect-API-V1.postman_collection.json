@@ -26,6 +26,9 @@
                             "var jsonData = pm.response.json();",
                             "if (jsonData.data && jsonData.data.accessToken) {",
                             "    pm.environment.set(\"auth_token\", jsonData.data.accessToken);",
+                            "}",
+                            "if (jsonData.data && jsonData.data.userId) {",
+                            "    pm.environment.set(\"patient_id\", jsonData.data.userId);",
                             "}"
                         ],
                         "type": "text/javascript"
@@ -111,7 +114,7 @@
                 "url": {"raw": "{{base_url}}/api/v1/appointments", "host": ["{{base_url}}"], "path": ["api", "v1", "appointments"]},
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"slotId\": \"{{slot_id}}\",\n  \"reasonForVisit\": \"Routine checkup\"\n}"
+                    "raw": "{\n  \"patientId\": \"{{patient_id}}\",\n  \"slotId\": \"{{slot_id}}\",\n  \"reason\": \"Routine checkup\"\n}"
                 }
             }
         },
