@@ -48,10 +48,14 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/api/v1/doctors/search?specialization=Cardiology",
+                    "raw": "{{base_url}}/api/v1/doctors/search?specialization=CARDIOLOGY&page=0&size=10",
                     "host": ["{{base_url}}"],
                     "path": ["api", "v1", "doctors", "search"],
-                    "query": [{"key": "specialization", "value": "Cardiology"}]
+                    "query": [
+                        {"key": "specialization", "value": "CARDIOLOGY"},
+                        {"key": "page", "value": "0"},
+                        {"key": "size", "value": "10"}
+                    ]
                 }
             }
         },
